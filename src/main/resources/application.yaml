@@ -1,0 +1,23 @@
+# Lula Insurance - Policy Binding System API Configuration
+# Non-sensitive application properties
+
+http:
+  listener:
+    host: "0.0.0.0"
+    port: "8081"
+    basePath: "/api/v1"
+
+api:
+  name: "policy-binding-system-api"
+  version: "v1"
+
+pas:
+  timeout:
+    connection: "30000"
+    response: "60000"
+  retry:
+    maxAttempts: "3"
+    interval: "1000"
+
+logging:
+  level: "INFO"

@@ -1,0 +1,15 @@
+{
+  "customer": {
+    "customerId": "C-78910",
+    "firstName": "Jane",
+    "lastName": "Doe"
+  },
+  "product": {
+    "productCode": "LULA-LIFE-STD"
+  },
+  "premium": {
+    "amount": 120.50,
+    "currency": "USD"
+  },
+  "effectiveDate": "2026-02-01"
+}

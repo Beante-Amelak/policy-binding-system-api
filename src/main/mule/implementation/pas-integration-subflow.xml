@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- =========================================================
+         PAS Integration Subflow
+         Transforms request to PAS contract and invokes PAS API
+         Handles PAS timeout and system errors
+         ========================================================= -->
+    <sub-flow name="pas-integration-subflow" doc:name="PAS Integration Subflow">
+        
+        <!-- Transform Request to PAS Contract -->
+        <ee:transform doc:name="Transform to PAS Request">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    transactionId: uuid(),
+    quoteReference: vars.originalRequest.quoteId,
+    policyHolder: {
+        id: vars.originalRequest.customer.customerId,
+        firstName: vars.originalRequest.customer.firstName default "",
+        lastName: vars.originalRequest.customer.lastName default "",
+        dateOfBirth: vars.originalRequest.customer.dateOfBirth as String default ""
+    },
+    coverage: {
+        productCode: vars.originalRequest.product.productCode,
+        coverageAmount: vars.originalRequest.product.coverageAmount default 0
+    },
+    premium: {
+        amount: vars.originalRequest.premium.amount,
+        currencyCode: vars.originalRequest.premium.currency
+    },
+    effectiveDate: vars.originalRequest.effectiveDate as String,
+    requestTimestamp: now() as String {format: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <!-- Store PAS Request for Logging -->
+        <set-variable variableName="pasRequest" 
+                      value="#[payload]" 
+                      doc:name="Store PAS Request"/>
+
+        <!-- Log PAS Call -->
+        <logger level="INFO" 
+                doc:name="Log PAS Call" 
+                message="#[output application/json --- {logType: 'PAS_CALL', correlationId: vars.correlationId, transactionId: vars.pasRequest.transactionId, quoteReference: vars.pasRequest.quoteReference, timestamp: now()}]"/>
+
+        <!-- Invoke PAS API -->
+        <try doc:name="Try PAS Call">
+            <http:request config-ref="PAS_HTTP_Request_Config" 
+                          doc:name="Call PAS API" 
+                          method="POST" 
+                          path="${secure::pas.basePath}/bind"
+                          responseTimeout="${pas.timeout.response}">
+                <http:headers><![CDATA[#[output application/java
+---
+{
+    "X-Correlation-ID": vars.correlationId,
+    "X-Transaction-ID": vars.pasRequest.transactionId
+}]]]></http:headers>
+            </http:request>
+            
+            <!-- Store PAS Response -->
+            <set-variable variableName="pasResponse" 
+                          value="#[payload]" 
+                          doc:name="Store PAS Response"/>
+
+            <!-- Log PAS Response -->
+            <logger level="INFO" 
+                    doc:name="Log PAS Response" 
+                    message="#[output application/json --- {logType: 'PAS_RESPONSE', correlationId: vars.correlationId, policyNumber: payload.policyNumber default 'N/A', status: payload.status default 'N/A', timestamp: now()}]"/>
+
+            <error-handler>
+                <!-- Handle HTTP Connectivity Errors -->
+                <on-error-propagate type="HTTP:CONNECTIVITY" 
+                                    doc:name="On Error - Connectivity" 
+                                    logException="true">
+                    <logger level="ERROR" 
+                            doc:name="Log PAS Connectivity Error" 
+                            message="#[output application/json --- {logType: 'PAS_ERROR', errorType: 'CONNECTIVITY', correlationId: vars.correlationId, message: error.description, timestamp: now()}]"/>
+                    <raise-error type="APP:PAS_ERROR" 
+                                 doc:name="Raise PAS Error" 
+                                 description="PAS system connectivity error"/>
+                </on-error-propagate>
+
+                <!-- Handle HTTP Timeout Errors -->
+                <on-error-propagate type="HTTP:TIMEOUT" 
+                                    doc:name="On Error - Timeout" 
+                                    logException="true">
+                    <logger level="ERROR" 
+                            doc:name="Log PAS Timeout Error" 
+                            message="#[output application/json --- {logType: 'PAS_ERROR', errorType: 'TIMEOUT', correlationId: vars.correlationId, message: error.description, timestamp: now()}]"/>
+                    <raise-error type="APP:PAS_ERROR" 
+                                 doc:name="Raise PAS Error" 
+                                 description="PAS system timeout error"/>
+                </on-error-propagate>
+
+                <!-- Handle Other HTTP Errors -->
+                <on-error-propagate type="HTTP:BAD_REQUEST, HTTP:INTERNAL_SERVER_ERROR" 
+                                    doc:name="On Error - HTTP Error" 
+                                    logException="true">
+                    <logger level="ERROR" 
+                            doc:name="Log PAS HTTP Error" 
+                            message="#[output application/json --- {logType: 'PAS_ERROR', errorType: 'HTTP_ERROR', correlationId: vars.correlationId, message: error.description, timestamp: now()}]"/>
+                    <raise-error type="APP:PAS_ERROR" 
+                                 doc:name="Raise PAS Error" 
+                                 description="PAS system returned an error"/>
+                </on-error-propagate>
+            </error-handler>
+        </try>
+
+    </sub-flow>
+
+</mule>

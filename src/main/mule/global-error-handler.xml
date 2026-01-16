@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- =========================================================
+         Global Error Handler for Policy Binding System API
+         Handles all error types and returns standardized ErrorResponse
+         ========================================================= -->
+    <error-handler name="global-error-handler" doc:name="Global Error Handler">
+        
+        <!-- =========================================================
+             Validation Errors - HTTP 400 Bad Request
+             ========================================================= -->
+        <on-error-propagate type="APIKIT:BAD_REQUEST" 
+                            doc:name="On Error Propagate - Bad Request" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="400" doc:name="Set HTTP Status 400"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "VALIDATION_ERROR",
+    errorMessage: error.description default "Invalid request data",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Validation Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'VALIDATION_ERROR', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             Custom Validation Errors - HTTP 400 Bad Request
+             ========================================================= -->
+        <on-error-propagate type="APP:VALIDATION_ERROR" 
+                            doc:name="On Error Propagate - Validation Error" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="400" doc:name="Set HTTP Status 400"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "VALIDATION_ERROR",
+    errorMessage: error.description default "Request validation failed",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Validation Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'VALIDATION_ERROR', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             Authentication Errors - HTTP 401 Unauthorized
+             ========================================================= -->
+        <on-error-propagate type="APIKIT:NOT_ACCEPTABLE" 
+                            doc:name="On Error Propagate - Unauthorized" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="401" doc:name="Set HTTP Status 401"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "UNAUTHORIZED",
+    errorMessage: "Invalid or missing client credentials",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Auth Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'UNAUTHORIZED', correlationId: vars.correlationId, message: 'Authentication failed'}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             Custom Auth Errors - HTTP 401 Unauthorized
+             ========================================================= -->
+        <on-error-propagate type="APP:UNAUTHORIZED" 
+                            doc:name="On Error Propagate - App Unauthorized" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="401" doc:name="Set HTTP Status 401"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "UNAUTHORIZED",
+    errorMessage: error.description default "Invalid or missing client credentials",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Auth Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'UNAUTHORIZED', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             PAS System Errors - HTTP 500 Internal Server Error
+             ========================================================= -->
+        <on-error-propagate type="APP:PAS_ERROR, HTTP:CONNECTIVITY, HTTP:TIMEOUT" 
+                            doc:name="On Error Propagate - PAS Error" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="500" doc:name="Set HTTP Status 500"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "PAS_SYSTEM_ERROR",
+    errorMessage: "Policy Administration System is unavailable",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log PAS Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'PAS_SYSTEM_ERROR', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             Resource Not Found - HTTP 404
+             ========================================================= -->
+        <on-error-propagate type="APIKIT:NOT_FOUND" 
+                            doc:name="On Error Propagate - Not Found" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="404" doc:name="Set HTTP Status 404"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "NOT_FOUND",
+    errorMessage: "Resource not found",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Not Found Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'NOT_FOUND', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             Method Not Allowed - HTTP 405
+             ========================================================= -->
+        <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED" 
+                            doc:name="On Error Propagate - Method Not Allowed" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="405" doc:name="Set HTTP Status 405"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "METHOD_NOT_ALLOWED",
+    errorMessage: "HTTP method not allowed for this resource",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Method Not Allowed Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'METHOD_NOT_ALLOWED', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             Unsupported Media Type - HTTP 415
+             ========================================================= -->
+        <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE" 
+                            doc:name="On Error Propagate - Unsupported Media Type" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="415" doc:name="Set HTTP Status 415"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "UNSUPPORTED_MEDIA_TYPE",
+    errorMessage: "Unsupported media type",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Unsupported Media Type Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'UNSUPPORTED_MEDIA_TYPE', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+        <!-- =========================================================
+             Catch-All - HTTP 500 Internal Server Error
+             ========================================================= -->
+        <on-error-propagate type="ANY" 
+                            doc:name="On Error Propagate - Any" 
+                            logException="true">
+            <set-variable variableName="httpStatus" value="500" doc:name="Set HTTP Status 500"/>
+            <ee:transform doc:name="Transform to Error Response">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    errorCode: "INTERNAL_SERVER_ERROR",
+    errorMessage: "An unexpected error occurred",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="ERROR" 
+                    doc:name="Log Unexpected Error" 
+                    message="#[output application/json --- {logType: 'ERROR', errorType: 'INTERNAL_SERVER_ERROR', correlationId: vars.correlationId, message: error.description}]"/>
+        </on-error-propagate>
+
+    </error-handler>
+
+</mule>

@@ -1,0 +1,5 @@
+{
+  "minMuleVersion": "4.9.3",
+  "javaSpecificationVersions": ["17"],
+  "secureProperties": ["secure.key", "pas.credentials.clientId", "pas.credentials.clientSecret", "api.security.clientId", "api.security.clientSecret"]
+}

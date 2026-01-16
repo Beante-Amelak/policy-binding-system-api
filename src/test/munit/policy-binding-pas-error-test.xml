@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+      xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+        http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+
+    <munit:config name="policy-binding-pas-error-test.xml"/>
+
+    <!-- =========================================================
+         Test: Policy Binding PAS Connectivity Error
+         Validates that PAS connectivity error returns HTTP 500
+         ========================================================= -->
+    <munit:test name="policy-binding-pas-connectivity-error-test" 
+                doc:name="Policy Binding PAS Connectivity Error" 
+                description="Test PAS connectivity error returns HTTP 500"
+                expectedErrorType="APP:PAS_ERROR">
+
+        <!-- =========================================================
+             BEHAVIOR: Mock PAS HTTP Request to return connectivity error
+             ========================================================= -->
+        <munit:behavior>
+            <!-- Mock PAS HTTP Request to simulate connectivity error -->
+            <munit-tools:mock-when doc:name="Mock PAS HTTP Request - Connectivity Error" processor="http:request">
+                <munit-tools:with-attributes>
+                    <munit-tools:with-attribute whereValue="PAS_HTTP_Request_Config" attributeName="config-ref"/>
+                </munit-tools:with-attributes>
+                <munit-tools:then-return>
+                    <munit-tools:error typeId="HTTP:CONNECTIVITY"/>
+                </munit-tools:then-return>
+            </munit-tools:mock-when>
+        </munit:behavior>
+
+        <!-- =========================================================
+             EXECUTION: Set event with valid request
+             ========================================================= -->
+        <munit:execution>
+            <!-- Set up the incoming HTTP request event with valid request -->
+            <munit:set-event doc:name="Set Valid Policy Binding Request">
+                <munit:payload value="#[MunitTools::getResourceAsString('sample-data/valid-policy-binding-request.json')]" mediaType="application/json" encoding="UTF-8"/>
+                <munit:attributes value="#[{
+                    method: 'POST',
+                    requestPath: '/api/v1/policies',
+                    headers: {
+                        'client_id': 'test-client-id',
+                        'client_secret': 'test-client-secret',
+                        'Content-Type': 'application/json'
+                    }
+                }]"/>
+                <munit:variables>
+                    <munit:variable key="correlationId" value="#['test-correlation-id-005']"/>
+                </munit:variables>
+            </munit:set-event>
+
+            <!-- Invoke the policy binding implementation flow -->
+            <flow-ref doc:name="Flow-ref to post:\policies" name="post:\policies:application\json:policy-binding-system-api-config"/>
+        </munit:execution>
+
+        
+    </munit:test>
+
+    <!-- =========================================================
+         Test: Policy Binding PAS Timeout Error
+         Validates that PAS timeout error returns HTTP 500
+         ========================================================= -->
+    <munit:test name="policy-binding-pas-timeout-error-test" 
+                doc:name="Policy Binding PAS Timeout Error" 
+                description="Test PAS timeout error returns HTTP 500"
+                expectedErrorType="APP:PAS_ERROR">
+
+        <!-- =========================================================
+             BEHAVIOR: Mock PAS HTTP Request to return timeout error
+             ========================================================= -->
+        <munit:behavior>
+            <!-- Mock PAS HTTP Request to simulate timeout error -->
+            <munit-tools:mock-when doc:name="Mock PAS HTTP Request - Timeout Error" processor="http:request">
+                <munit-tools:with-attributes>
+                    <munit-tools:with-attribute whereValue="PAS_HTTP_Request_Config" attributeName="config-ref"/>
+                </munit-tools:with-attributes>
+                <munit-tools:then-return>
+                    <munit-tools:error typeId="HTTP:TIMEOUT"/>
+                </munit-tools:then-return>
+            </munit-tools:mock-when>
+        </munit:behavior>
+
+        <!-- =========================================================
+             EXECUTION: Set event with valid request
+             ========================================================= -->
+        <munit:execution>
+            <!-- Set up the incoming HTTP request event with valid request -->
+            <munit:set-event doc:name="Set Valid Policy Binding Request">
+                <munit:payload value="#[MunitTools::getResourceAsString('sample-data/valid-policy-binding-request.json')]" mediaType="application/json" encoding="UTF-8"/>
+                <munit:attributes value="#[{
+                    method: 'POST',
+                    requestPath: '/api/v1/policies',
+                    headers: {
+                        'client_id': 'test-client-id',
+                        'client_secret': 'test-client-secret',
+                        'Content-Type': 'application/json'
+                    }
+                }]"/>
+                <munit:variables>
+                    <munit:variable key="correlationId" value="#['test-correlation-id-006']"/>
+                </munit:variables>
+            </munit:set-event>
+
+            <!-- Invoke the policy binding implementation flow -->
+            <flow-ref doc:name="Flow-ref to post:\policies" name="post:\policies:application\json:policy-binding-system-api-config"/>
+        </munit:execution>
+
+    </munit:test>
+
+    <!-- =========================================================
+         Test: Policy Binding PAS Internal Server Error
+         Validates that PAS 500 error returns HTTP 500
+         ========================================================= -->
+    <munit:test name="policy-binding-pas-internal-server-error-test" 
+                doc:name="Policy Binding PAS Internal Server Error" 
+                description="Test PAS internal server error returns HTTP 500"
+                expectedErrorType="APP:PAS_ERROR">
+
+        <!-- =========================================================
+             BEHAVIOR: Mock PAS HTTP Request to return internal server error
+             ========================================================= -->
+        <munit:behavior>
+            <!-- Mock PAS HTTP Request to simulate internal server error -->
+            <munit-tools:mock-when doc:name="Mock PAS HTTP Request - Internal Server Error" processor="http:request">
+                <munit-tools:with-attributes>
+                    <munit-tools:with-attribute whereValue="PAS_HTTP_Request_Config" attributeName="config-ref"/>
+                </munit-tools:with-attributes>
+                <munit-tools:then-return>
+                    <munit-tools:error typeId="HTTP:INTERNAL_SERVER_ERROR"/>
+                </munit-tools:then-return>
+            </munit-tools:mock-when>
+        </munit:behavior>
+
+        <!-- =========================================================
+             EXECUTION: Set event with valid request
+             ========================================================= -->
+        <munit:execution>
+            <!-- Set up the incoming HTTP request event with valid request -->
+            <munit:set-event doc:name="Set Valid Policy Binding Request">
+                <munit:payload value="#[MunitTools::getResourceAsString('sample-data/valid-policy-binding-request.json')]" mediaType="application/json" encoding="UTF-8"/>
+                <munit:attributes value="#[{
+                    method: 'POST',
+                    requestPath: '/api/v1/policies',
+                    headers: {
+                        'client_id': 'test-client-id',
+                        'client_secret': 'test-client-secret',
+                        'Content-Type': 'application/json'
+                    }
+                }]"/>
+                <munit:variables>
+                    <munit:variable key="correlationId" value="#['test-correlation-id-007']"/>
+                </munit:variables>
+            </munit:set-event>
+
+            <!-- Invoke the policy binding implementation flow -->
+            <flow-ref doc:name="Flow-ref to post:\policies" name="post:\policies:application\json:policy-binding-system-api-config"/>
+        </munit:execution>
+
+    </munit:test>
+
+</mule>

@@ -1,0 +1,16 @@
+# Lula Insurance - Policy Binding System API Secure Configuration
+# Encrypted sensitive properties - Use secure-properties module
+# Encryption: AES/CBC with key LulaInsurance24!
+
+pas:
+  host: "![2nVSKbZtW5pfWZhncofpwQ==]"
+  port: "![eO6SjanSVIoo5aAayO4GxA==]"
+  basePath: "![mOy6snNa9Q9bS21X2UBfsiCwx2jMedGsaJ3t0iCOxaE=]"
+  credentials:
+    clientId: "![NQ2yfxWeidAEHXsklzzGFA==]"
+    clientSecret: "![mvFgDqTxtz/DERUh3x1la+57Zl/1ZTUQNN8y9na7kb4=]"
+
+api:
+  security:
+    clientId: "![m3VrmOLOqe6fv5UNBXFNtQ==]"
+    clientSecret: "![SSTg9xIcmfjJ/go4m5Zx94pxx1g24YcjS9TnILfIwI4=]"

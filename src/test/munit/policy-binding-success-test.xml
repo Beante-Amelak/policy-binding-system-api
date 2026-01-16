@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+      xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+        http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+
+    <munit:config name="policy-binding-success-test.xml"/>
+
+    <!-- =========================================================
+         Test: Policy Binding Success Case
+         Validates successful policy binding with valid request
+         and mocked PAS response
+         ========================================================= -->
+    <munit:test name="policy-binding-success-test" 
+                doc:name="Policy Binding Success Test" 
+                description="Test successful policy binding with valid request">
+
+        <!-- =========================================================
+             BEHAVIOR: Setup mocks for external dependencies
+             ========================================================= -->
+        <munit:behavior>
+            <!-- Mock PAS HTTP Request -->
+            <munit-tools:mock-when doc:name="Mock PAS HTTP Request" processor="http:request">
+                <munit-tools:with-attributes>
+                    <munit-tools:with-attribute whereValue="PAS_HTTP_Request_Config" attributeName="config-ref"/>
+                </munit-tools:with-attributes>
+                <munit-tools:then-return>
+                    <munit-tools:payload value="#[MunitTools::getResourceAsString('sample-data/pas-success-response.json')]" mediaType="application/json" encoding="UTF-8"/>
+                    <munit-tools:attributes value="#[{statusCode: 200}]"/>
+                </munit-tools:then-return>
+            </munit-tools:mock-when>
+        </munit:behavior>
+
+        <!-- =========================================================
+             EXECUTION: Set event and invoke flow
+             ========================================================= -->
+        <munit:execution>
+            <!-- Set up the incoming HTTP request event -->
+            <munit:set-event doc:name="Set Valid Policy Binding Request">
+                <munit:payload value="#[MunitTools::getResourceAsString('sample-data/valid-policy-binding-request.json')]" mediaType="application/json" encoding="UTF-8"/>
+                <munit:attributes value="#[{
+                    method: 'POST',
+                    requestPath: '/api/v1/policies',
+                    headers: {
+                        'client_id': 'test-client-id',
+                        'client_secret': 'test-client-secret',
+                        'Content-Type': 'application/json'
+                    }
+                }]"/>
+                <munit:variables>
+                    <munit:variable key="correlationId" value="#['test-correlation-id-001']"/>
+                </munit:variables>
+            </munit:set-event>
+
+            <!-- Invoke the policy binding implementation flow -->
+            <flow-ref doc:name="Flow-ref to post:\policies" name="post:\policies:application\json:policy-binding-system-api-config"/>
+        </munit:execution>
+
+        <!-- =========================================================
+             VALIDATION: Assert expected outcomes
+             ========================================================= -->
+        <munit:validation>
+            <!-- Assert HTTP Status is 201 Created -->
+            <munit-tools:assert-that doc:name="Assert HTTP Status 201" 
+                                     expression="#[vars.httpStatus]" 
+                                     is="#[MunitTools::equalTo('201')]" 
+                                     message="Expected HTTP status 201 for successful policy binding"/>
+
+            <!-- Assert Policy Number is present -->
+            <munit-tools:assert-that doc:name="Assert Policy Number Present" 
+                                     expression="#[payload.policyNumber]" 
+                                     is="#[MunitTools::notNullValue()]" 
+                                     message="Policy number should be present in response"/>
+
+            <!-- Assert Policy ID is present -->
+            <munit-tools:assert-that doc:name="Assert Policy ID Present" 
+                                     expression="#[payload.policyId]" 
+                                     is="#[MunitTools::notNullValue()]" 
+                                     message="Policy ID should be present in response"/>
+
+            <!-- Assert Status is BOUND -->
+            <munit-tools:assert-that doc:name="Assert Status is BOUND" 
+                                     expression="#[payload.status]" 
+                                     is="#[MunitTools::equalTo('BOUND')]" 
+                                     message="Policy status should be BOUND"/>
+
+            <!-- Assert Success Message -->
+            <munit-tools:assert-that doc:name="Assert Success Message" 
+                                     expression="#[payload.message]" 
+                                     is="#[MunitTools::equalTo('Policy successfully bound')]" 
+                                     message="Success message should be present"/>
+
+            <!-- Verify PAS HTTP Request was called -->
+            <munit-tools:verify-call doc:name="Verify PAS Call" processor="http:request" times="1">
+                <munit-tools:with-attributes>
+                    <munit-tools:with-attribute whereValue="PAS_HTTP_Request_Config" attributeName="config-ref"/>
+                </munit-tools:with-attributes>
+            </munit-tools:verify-call>
+        </munit:validation>
+
+    </munit:test>
+
+</mule>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- =========================================================
+         Error Mapping Subflow
+         Converts Mule and PAS errors to ErrorResponse schema
+         Maps errors to correct HTTP status codes
+         ========================================================= -->
+    <sub-flow name="error-mapping-subflow" doc:name="Error Mapping Subflow">
+        
+        <!-- Transform Error to ErrorResponse -->
+        <ee:transform doc:name="Transform to ErrorResponse">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var errorTypeMapping = {
+    "APP:VALIDATION_ERROR": { code: "VALIDATION_ERROR", status: 400 },
+    "APP:UNAUTHORIZED": { code: "UNAUTHORIZED", status: 401 },
+    "APP:PAS_ERROR": { code: "PAS_SYSTEM_ERROR", status: 500 },
+    "HTTP:CONNECTIVITY": { code: "PAS_SYSTEM_ERROR", status: 500 },
+    "HTTP:TIMEOUT": { code: "PAS_SYSTEM_ERROR", status: 500 },
+    "APIKIT:BAD_REQUEST": { code: "VALIDATION_ERROR", status: 400 },
+    "APIKIT:NOT_FOUND": { code: "NOT_FOUND", status: 404 },
+    "APIKIT:METHOD_NOT_ALLOWED": { code: "METHOD_NOT_ALLOWED", status: 405 },
+    "APIKIT:UNSUPPORTED_MEDIA_TYPE": { code: "UNSUPPORTED_MEDIA_TYPE", status: 415 }
+}
+
+var errorType = error.errorType.identifier default "UNKNOWN"
+var mappedError = errorTypeMapping[errorType] default { code: "INTERNAL_SERVER_ERROR", status: 500 }
+---
+{
+    errorCode: mappedError.code,
+    errorMessage: error.description default "An unexpected error occurred",
+    correlationId: vars.correlationId default correlationId
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="httpStatus"><![CDATA[%dw 2.0
+output application/java
+
+var errorTypeMapping = {
+    "APP:VALIDATION_ERROR": 400,
+    "APP:UNAUTHORIZED": 401,
+    "APP:PAS_ERROR": 500,
+    "HTTP:CONNECTIVITY": 500,
+    "HTTP:TIMEOUT": 500,
+    "APIKIT:BAD_REQUEST": 400,
+    "APIKIT:NOT_FOUND": 404,
+    "APIKIT:METHOD_NOT_ALLOWED": 405,
+    "APIKIT:UNSUPPORTED_MEDIA_TYPE": 415
+}
+
+var errorType = error.errorType.identifier default "UNKNOWN"
+---
+errorTypeMapping[errorType] default 500]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+
+        <!-- Log Error Mapping -->
+        <logger level="ERROR" 
+                doc:name="Log Error Mapping" 
+                message="#[output application/json --- {logType: 'ERROR_MAPPING', correlationId: vars.correlationId, errorCode: payload.errorCode, httpStatus: vars.httpStatus, timestamp: now()}]"/>
+
+    </sub-flow>
+
+</mule>

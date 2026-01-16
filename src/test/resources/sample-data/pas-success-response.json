@@ -1,0 +1,7 @@
+{
+  "policyNumber": "PL-45678901",
+  "policyId": "POL-998877",
+  "status": "BOUND",
+  "effectiveDate": "2026-02-01",
+  "message": "Policy successfully bound in PAS"
+}

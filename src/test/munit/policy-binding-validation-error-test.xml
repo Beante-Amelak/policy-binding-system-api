@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+      xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+        http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+
+    <munit:config name="policy-binding-validation-error-test.xml"/>
+
+    <!-- =========================================================
+         Test: Policy Binding Validation Error - Missing quoteId
+         Validates that missing required field returns HTTP 400
+         ========================================================= -->
+    <munit:test name="policy-binding-validation-error-missing-quoteId-test" 
+                doc:name="Policy Binding Validation Error - Missing quoteId" 
+                description="Test validation error when quoteId is missing"
+                expectedErrorType="APP:VALIDATION_ERROR">
+
+        <munit:execution>
+            <!-- Set up the incoming HTTP request event with missing quoteId -->
+            <munit:set-event doc:name="Set Invalid Request - Missing quoteId">
+                <munit:payload value="#[MunitTools::getResourceAsString('sample-data/invalid-policy-binding-request.json')]" mediaType="application/json" encoding="UTF-8"/>
+                <munit:attributes value="#[{
+                    method: 'POST',
+                    requestPath: '/api/v1/policies',
+                    headers: {
+                        'client_id': 'test-client-id',
+                        'client_secret': 'test-client-secret',
+                        'Content-Type': 'application/json'
+                    }
+                }]"/>
+                <munit:variables>
+                    <munit:variable key="correlationId" value="#['test-correlation-id-002']"/>
+                </munit:variables>
+            </munit:set-event>
+
+            <!-- Invoke the policy binding implementation flow -->
+            <flow-ref doc:name="Flow-ref to post:\policies" name="post:\policies:application\json:policy-binding-system-api-config"/>
+        </munit:execution>
+
+    </munit:test>
+
+    <!-- =========================================================
+         Test: Policy Binding Validation Error - Missing Customer
+         Validates that missing customer object returns HTTP 400
+         ========================================================= -->
+    <munit:test name="policy-binding-validation-error-missing-customer-test" 
+                doc:name="Policy Binding Validation Error - Missing Customer" 
+                description="Test validation error when customer object is missing"
+                expectedErrorType="APP:VALIDATION_ERROR">
+
+        <munit:execution>
+            <!-- Set up the incoming HTTP request event with missing customer -->
+            <munit:set-event doc:name="Set Invalid Request - Missing Customer">
+                <munit:payload value="#[output application/json --- {
+                    quoteId: 'Q-123456',
+                    product: {
+                        productCode: 'LULA-LIFE-STD',
+                        coverageAmount: 250000
+                    },
+                    premium: {
+                        amount: 120.50,
+                        currency: 'USD'
+                    },
+                    effectiveDate: '2026-02-01'
+                }]" mediaType="application/json" encoding="UTF-8"/>
+                <munit:attributes value="#[{
+                    method: 'POST',
+                    requestPath: '/api/v1/policies',
+                    headers: {
+                        'client_id': 'test-client-id',
+                        'client_secret': 'test-client-secret',
+                        'Content-Type': 'application/json'
+                    }
+                }]"/>
+                <munit:variables>
+                    <munit:variable key="correlationId" value="#['test-correlation-id-003']"/>
+                </munit:variables>
+            </munit:set-event>
+
+            <!-- Invoke the policy binding implementation flow -->
+            <flow-ref doc:name="Flow-ref to post:\policies" name="post:\policies:application\json:policy-binding-system-api-config"/>
+        </munit:execution>
+
+    </munit:test>
+
+    <!-- =========================================================
+         Test: Policy Binding Validation Error - Missing Premium Amount
+         Validates that missing premium amount returns HTTP 400
+         ========================================================= -->
+    <munit:test name="policy-binding-validation-error-missing-premium-amount-test" 
+                doc:name="Policy Binding Validation Error - Missing Premium Amount" 
+                description="Test validation error when premium amount is missing"
+                expectedErrorType="APP:VALIDATION_ERROR">
+
+        <munit:execution>
+            <!-- Set up the incoming HTTP request event with missing premium amount -->
+            <munit:set-event doc:name="Set Invalid Request - Missing Premium Amount">
+                <munit:payload value="#[output application/json --- {
+                    quoteId: 'Q-123456',
+                    customer: {
+                        customerId: 'C-78910',
+                        firstName: 'Jane',
+                        lastName: 'Doe'
+                    },
+                    product: {
+                        productCode: 'LULA-LIFE-STD',
+                        coverageAmount: 250000
+                    },
+                    premium: {
+                        currency: 'USD'
+                    },
+                    effectiveDate: '2026-02-01'
+                }]" mediaType="application/json" encoding="UTF-8"/>
+                <munit:attributes value="#[{
+                    method: 'POST',
+                    requestPath: '/api/v1/policies',
+                    headers: {
+                        'client_id': 'test-client-id',
+                        'client_secret': 'test-client-secret',
+                        'Content-Type': 'application/json'
+                    }
+                }]"/>
+                <munit:variables>
+                    <munit:variable key="correlationId" value="#['test-correlation-id-004']"/>
+                </munit:variables>
+            </munit:set-event>
+
+            <!-- Invoke the policy binding implementation flow -->
+            <flow-ref doc:name="Flow-ref to post:\policies" name="post:\policies:application\json:policy-binding-system-api-config"/>
+        </munit:execution>
+
+    </munit:test>
+
+</mule>

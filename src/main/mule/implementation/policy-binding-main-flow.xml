@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- =========================================================
+         Main API Flow - Policy Binding System API
+         Entry point for all API requests via APIKit Router
+         ========================================================= -->
+    <flow name="policy-binding-system-api-main" doc:name="Policy Binding System API Main Flow">
+        
+        <!-- HTTP Listener -->
+        <http:listener config-ref="HTTP_Listener_Config" 
+                       doc:name="HTTP Listener" 
+                       path="${http.listener.basePath}/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+
+        <!-- Generate Correlation ID -->
+        <set-variable variableName="correlationId" 
+                      value="#[correlationId]" 
+                      doc:name="Set Correlation ID"/>
+
+        <!-- Log Request Entry -->
+        <logger level="INFO" 
+                doc:name="Log Request Entry" 
+                message="#[output application/json --- {logType: 'REQUEST_ENTRY', correlationId: vars.correlationId, method: attributes.method, path: attributes.requestPath, timestamp: now()}]"/>
+
+        <!-- Client ID Enforcement -->
+        <flow-ref name="client-id-enforcement-subflow" doc:name="Client ID Enforcement"/>
+
+        <!-- APIKit Router -->
+        <apikit:router config-ref="policy-binding-system-api-config" doc:name="APIKit Router"/>
+
+        <!-- Log Request Exit -->
+        <logger level="INFO" 
+                doc:name="Log Request Exit" 
+                message="#[output application/json --- {logType: 'REQUEST_EXIT', correlationId: vars.correlationId, httpStatus: vars.httpStatus default 200, timestamp: now()}]"/>
+
+        <!-- Global Error Handler Reference -->
+        <error-handler ref="global-error-handler"/>
+
+    </flow>
+
+    <!-- =========================================================
+         Client ID Enforcement Subflow
+         Validates client_id and client_secret headers
+         ========================================================= -->
+    <sub-flow name="client-id-enforcement-subflow" doc:name="Client ID Enforcement Subflow">
+        <choice doc:name="Check Client Credentials">
+            <when expression="#[isEmpty(attributes.headers.'client_id') or isEmpty(attributes.headers.'client_secret')]">
+                <raise-error type="APP:UNAUTHORIZED" 
+                             doc:name="Raise Unauthorized Error" 
+                             description="Missing client_id or client_secret header"/>
+            </when>
+            <otherwise>
+                <logger level="DEBUG" 
+                        doc:name="Log Client Validated" 
+                        message="#[output application/json --- {logType: 'DEBUG', correlationId: vars.correlationId, message: 'Client credentials validated'}]"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+
+    <!-- =========================================================
+         APIKit Console Flow (Development Only)
+         ========================================================= -->
+    <flow name="policy-binding-system-api-console" doc:name="APIKit Console Flow">
+        <http:listener config-ref="HTTP_Listener_Config" 
+                       doc:name="HTTP Listener" 
+                       path="${http.listener.basePath}/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+        </http:listener>
+        <apikit:console config-ref="policy-binding-system-api-config" doc:name="APIKit Console"/>
+    </flow>
+
+    <!-- =========================================================
+         POST /policies Implementation Flow
+         Handles policy binding requests
+         ========================================================= -->
+    <flow name="post:\policies:application\json:policy-binding-system-api-config" doc:name="POST /policies Implementation">
+        
+        <!-- Store Original Request -->
+        <set-variable variableName="originalRequest" 
+                      value="#[payload]" 
+                      doc:name="Store Original Request"/>
+
+        <!-- Log Policy Binding Request -->
+        <logger level="INFO" 
+                doc:name="Log Policy Binding Request" 
+                message="#[output application/json --- {logType: 'POLICY_BINDING_REQUEST', correlationId: vars.correlationId, quoteId: payload.quoteId, customerId: payload.customer.customerId, timestamp: now()}]"/>
+
+        <!-- Request Validation -->
+        <flow-ref name="request-validation-subflow" doc:name="Validate Request"/>
+
+        <!-- PAS Integration -->
+        <flow-ref name="pas-integration-subflow" doc:name="PAS Integration"/>
+
+        <!-- Response Mapping -->
+        <flow-ref name="response-mapping-subflow" doc:name="Map Response"/>
+
+        <!-- Set HTTP Status 201 Created -->
+        <set-variable variableName="httpStatus" 
+                      value="201" 
+                      doc:name="Set HTTP Status 201"/>
+
+        <!-- Log Policy Binding Success -->
+        <logger level="INFO" 
+                doc:name="Log Policy Binding Success" 
+                message="#[output application/json --- {logType: 'POLICY_BINDING_SUCCESS', correlationId: vars.correlationId, policyNumber: payload.policyNumber, policyId: payload.policyId, timestamp: now()}]"/>
+
+    </flow>
+
+</mule>

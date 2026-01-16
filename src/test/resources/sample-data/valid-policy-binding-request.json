@@ -1,0 +1,18 @@
+{
+  "quoteId": "Q-123456",
+  "customer": {
+    "customerId": "C-78910",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "dateOfBirth": "1985-06-15"
+  },
+  "product": {
+    "productCode": "LULA-LIFE-STD",
+    "coverageAmount": 250000
+  },
+  "premium": {
+    "amount": 120.50,
+    "currency": "USD"
+  },
+  "effectiveDate": "2026-02-01"
+}

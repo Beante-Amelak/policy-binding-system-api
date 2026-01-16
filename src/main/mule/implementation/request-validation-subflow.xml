@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- =========================================================
+         Request Validation Subflow
+         Validates required fields in PolicyBindingRequest
+         Raises typed Mule errors for invalid payloads
+         ========================================================= -->
+    <sub-flow name="request-validation-subflow" doc:name="Request Validation Subflow">
+        
+        <!-- Log Validation Start -->
+        <logger level="DEBUG" 
+                doc:name="Log Validation Start" 
+                message="#[output application/json --- {logType: 'DEBUG', correlationId: vars.correlationId, message: 'Starting request validation'}]"/>
+
+        <!-- Validate Required Fields -->
+        <choice doc:name="Validate Required Fields">
+            
+            <!-- Validate quoteId -->
+            <when expression="#[isEmpty(vars.originalRequest.quoteId)]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - quoteId" 
+                             description="quoteId is required and cannot be empty"/>
+            </when>
+            
+            <!-- Validate customer object -->
+            <when expression="#[vars.originalRequest.customer == null]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - customer" 
+                             description="customer object is required"/>
+            </when>
+            
+            <!-- Validate customerId -->
+            <when expression="#[isEmpty(vars.originalRequest.customer.customerId)]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - customerId" 
+                             description="customer.customerId is required and cannot be empty"/>
+            </when>
+            
+            <!-- Validate product object -->
+            <when expression="#[vars.originalRequest.product == null]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - product" 
+                             description="product object is required"/>
+            </when>
+            
+            <!-- Validate productCode -->
+            <when expression="#[isEmpty(vars.originalRequest.product.productCode)]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - productCode" 
+                             description="product.productCode is required and cannot be empty"/>
+            </when>
+            
+            <!-- Validate premium object -->
+            <when expression="#[vars.originalRequest.premium == null]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - premium" 
+                             description="premium object is required"/>
+            </when>
+            
+            <!-- Validate premium amount -->
+            <when expression="#[vars.originalRequest.premium.amount == null]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - premium amount" 
+                             description="premium.amount is required"/>
+            </when>
+            
+            <!-- Validate premium currency -->
+            <when expression="#[isEmpty(vars.originalRequest.premium.currency)]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - premium currency" 
+                             description="premium.currency is required and cannot be empty"/>
+            </when>
+            
+            <!-- Validate effectiveDate -->
+            <when expression="#[vars.originalRequest.effectiveDate == null]">
+                <raise-error type="APP:VALIDATION_ERROR" 
+                             doc:name="Raise Validation Error - effectiveDate" 
+                             description="effectiveDate is required"/>
+            </when>
+            
+            <!-- All validations passed -->
+            <otherwise>
+                <logger level="DEBUG" 
+                        doc:name="Log Validation Success" 
+                        message="#[output application/json --- {logType: 'DEBUG', correlationId: vars.correlationId, message: 'Request validation successful'}]"/>
+            </otherwise>
+        </choice>
+
+    </sub-flow>
+
+</mule>
